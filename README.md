@@ -47,23 +47,6 @@
 > converter that prepares a pack for the handheld. See
 > [Custom content](#custom-content).
 
-## What's new in v1.7.2
-
-- **Working gameplay jingles retained.** Silver-coin and key ditties use the
-  committed ownership protection against the spatial-ambience stop path.
-  The release keeps the audio code from the hardware-confirmed working build.
-- **Vita rendering defaults:** native 960x544 rendering and 2x anisotropic
-  filtering in Restored and Remastered. Unsupported RemasterFX output
-  post-processing is skipped before it can leave the shader compiler unusable.
-- **HD pack installation:** discover Rice/GLideN64 folders or ZIPs, extract ZIPs
-  on the Vita with visible progress, and enable or disable packs in-game.
-- **HD texture loading:** asynchronous Rice texture decoding and mip generation,
-  plus an offline converter and loader for `.vtex` files containing RGBA8 pixels
-  and prebuilt mipmaps.
-- **Experimental per-scene preload is excluded from this release.** It needs
-  separate HD-pack/audio testing before publication. **Texture pop-in remains
-  possible:** a pending replacement still draws the original texture.
-
 See [release notes](RELEASE_NOTES.md) for the release scope and
 [known issues](PORTING_STATUS.md#known-issues) for the remaining limitations.
 
