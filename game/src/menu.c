@@ -3337,11 +3337,23 @@ void load_menu_text(s32 language) {
     }
 
 #if REGION == REGION_JP
-    /* Japanese ROM has only Japanese text.
-     * If the table has <= 3 entries (count, offset, end), langIndex MUST be 1.
-     * Also if langIndex is out of table bounds, fallback to 1. */
-    if (tableWords <= 3 || langIndex + 1 >= tableWords) {
+    /* For Japanese ROM, determine whether slot 1 or slot 4 contains the valid string payload:
+     * If tableWords <= 3, slot 1 is the only valid slot.
+     * If tableWords > 3, check the payload sizes of slot 1 vs slot 4 to pick the one with substantive text. */
+    if (tableWords <= 3) {
         langIndex = 1;
+    } else {
+        s32 size1 = (tableWords > 2) ? (gMenuTextLangTable[2] - gMenuTextLangTable[1]) : 0;
+        s32 size4 = (tableWords > 5) ? (gMenuTextLangTable[5] - gMenuTextLangTable[4]) : 0;
+        if (size4 > 100 && size4 >= size1) {
+            langIndex = 4;
+        } else if (size1 > 100) {
+            langIndex = 1;
+        } else if (tableWords > 5 && size4 > 0) {
+            langIndex = 4;
+        } else {
+            langIndex = 1;
+        }
     }
 #else
     if (tableWords > 0 && langIndex + 1 >= tableWords) {
@@ -3349,9 +3361,18 @@ void load_menu_text(s32 language) {
     }
 #endif
 
-    size = gMenuTextLangTable[langIndex + 1];
-    langIndex = gMenuTextLangTable[langIndex];
-    size -= langIndex;
+    if (langIndex + 1 < tableWords) {
+        size = gMenuTextLangTable[langIndex + 1] - gMenuTextLangTable[langIndex];
+        langIndex = gMenuTextLangTable[langIndex];
+    } else {
+        size = 0;
+        langIndex = 0;
+    }
+    if (size <= 0 && tableWords > 2) {
+        /* Fallback to slot 1 if chosen slot was empty */
+        size = gMenuTextLangTable[2] - gMenuTextLangTable[1];
+        langIndex = gMenuTextLangTable[1];
+    }
     temp = gMenuText;
 
     if (temp == NULL) {
@@ -3396,7 +3417,7 @@ void load_menu_text(s32 language) {
         for (idx = 0; idx < count; idx++) {
             u32 off = ((u32) blob[idx * 4] << 24) | ((u32) blob[idx * 4 + 1] << 16) |
                       ((u32) blob[idx * 4 + 2] << 8) | (u32) blob[idx * 4 + 3];
-            gMenuText[idx] = (off == 0xFFFFFFFFu) ? NULL : (char *) (blob + off);
+            gMenuText[idx] = (off == 0xFFFFFFFFu || off >= (u32)size) ? NULL : (char *) (blob + off);
         }
 #if defined(__vita__)
         {
