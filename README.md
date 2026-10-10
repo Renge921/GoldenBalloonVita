@@ -1,0 +1,450 @@
+<p align="center">
+  <img src="dist/web/assets/hero.jpg" alt="Golden Balloon" width="820">
+</p>
+
+<h1 align="center">Golden Balloon — PS Vita Port</h1>
+
+<p align="center">
+  A PS Vita port of <a href="https://github.com/akratch/goldenballoon">Golden Balloon</a>,
+  itself a native and browser source port of the 1997 Nintendo 64 kart racer,
+  built on the community
+  <a href="https://github.com/DavidSM64/Diddy-Kong-Racing">decompilation</a>.<br>
+  Not an emulator: the game is cross-compiled for the Vita and runs from a ROM
+  you already own. No game assets are included.
+</p>
+
+<p align="center">
+  <a href="https://github.com/akratch/goldenballoon"><b>⬆ Upstream project (Windows/macOS/Linux/browser)</b></a>
+  &nbsp;·&nbsp;
+  <a href="PORTING_STATUS.md"><b>📋 Full Vita port status &amp; known issues</b></a>
+</p>
+
+> **This is an unofficial PS Vita hardware port.** It is a fork of
+> [akratch/goldenballoon](https://github.com/akratch/goldenballoon) that adds
+> a PS Vita target on top of everything the upstream project already does.
+> Everything in this document that isn't about the Vita applies equally to
+> the upstream project — most of it is copied from their README, because
+> most of the game hasn't changed. See [PORTING_STATUS.md](PORTING_STATUS.md)
+> for the day-to-day truth about what currently works, what doesn't, and what
+> is actively being debugged.
+>
+> **Status update (1.7.2):** the release retains the working audio and
+> silver-coin pickup jingles confirmed on real Vita hardware on September 17.
+> A complete Adventure playthrough was confirmed on the earlier Restored
+> baseline; this is not a claim of a new full playthrough for 1.7.2. The port
+> boots, loads a ROM, renders 3D races and menus, saves progress, and includes
+> a 98-trophy pack. The magic-code-gated Save Editor provides a supported way
+> to test and repair Vita save progression.
+>
+> **The Remastered preset no longer crashes at startup.** Its post-processing
+> program was desktop-only GLSL that the Vita's shader compiler rejected, and
+> the rejection left that compiler unusable for every shader after it. Vita
+> builds now skip that program, so Remastered boots and runs — without the
+> post effects (tonemap, bloom, FXAA, SSAO) and per-pixel lighting the Vita
+> cannot render anyway. Restored remains the default and the recommended look.
+>
+> **High-resolution texture packs are supported on Vita**, including a
+> converter that prepares a pack for the handheld. See
+> [Custom content](#custom-content).
+
+## What's new in v1.7.2
+
+- **Working gameplay jingles retained.** Silver-coin and key ditties use the
+  committed ownership protection against the spatial-ambience stop path.
+  The release keeps the audio code from the hardware-confirmed working build.
+- **Vita rendering defaults:** native 960x544 rendering and 2x anisotropic
+  filtering in Restored and Remastered. Unsupported RemasterFX output
+  post-processing is skipped before it can leave the shader compiler unusable.
+- **HD pack installation:** discover Rice/GLideN64 folders or ZIPs, extract ZIPs
+  on the Vita with visible progress, and enable or disable packs in-game.
+- **HD texture loading:** asynchronous Rice texture decoding and mip generation,
+  plus an offline converter and loader for `.vtex` files containing RGBA8 pixels
+  and prebuilt mipmaps.
+- **Experimental per-scene preload is excluded from this release.** It needs
+  separate HD-pack/audio testing before publication. **Texture pop-in remains
+  possible:** a pending replacement still draws the original texture.
+
+See [release notes](RELEASE_NOTES.md) for the release scope and
+[known issues](PORTING_STATUS.md#known-issues) for the remaining limitations.
+
+## Quick start (PS Vita)
+
+1. **Homebrew prerequisites.** Your Vita needs a homebrew-enabled firmware
+   (H-Encore or similar) with [VitaShell](https://github.com/TheOfficialFloW/VitaShell)
+   installed, and **`libshacccg.suprx`** present at `ur0:data/libshacccg.suprx`
+   (Sony's proprietary runtime shader compiler — VitaShell can fetch it for
+   you from its own menus, or use [shacccg-installer](https://github.com/Electry/shacccg.suprx-installer)).
+   This port will not run without it. To use trophies, download
+   [`NoTrpDrm.suprx`](https://github.com/Rinnegatamante/NoTrpDrm/releases/download/v.1.1/NoTrpDrm.suprx) from
+   the official v1.1 release (source and documentation:
+   [Rinnegatamante/NoTrpDrm](https://github.com/Rinnegatamante/NoTrpDrm)), copy
+   it to the `tai` directory used by your active configuration—normally
+   `ur0:tai/`—and add the matching path beneath **`*main`** in that
+   `config.txt`:
+
+   ```text
+   *main
+   ur0:tai/NoTrpDrm.suprx
+   ```
+
+   Reboot the Vita after editing the configuration. Use `ux0:tai/` in both
+   places instead if that is where your active taiHEN configuration lives.
+   Without NoTrpDrm, the game remains playable but trophies are safely
+   unavailable.
+2. **Get the ROM.** You need a legally acquired dump of the original game —
+   the supported US (`v80`) dump, as `.z64`. Copy it onto your Vita's memory card at
+   exactly this path:
+
+   ```text
+   ux0:data/goldenballoon/baserom.us.v80.z64
+   ```
+
+   There is no in-app ROM picker on Vita yet (see
+   [PORTING_STATUS.md](PORTING_STATUS.md)) — the engine looks for the ROM at
+   that fixed path only.
+3. **Install.** Download `GoldenBalloon-Vita-v1.7.2.vpk` from the
+   [v1.7.2 release](https://github.com/zm2283145/goldenballoon-vita-port/releases/tag/v1.7.2).
+   Copy it to your Vita (FTP via VitaShell, or a USB
+   cable) and install it from VitaShell like any other VPK.
+4. **Play.** The default Vita controls work out of the box. Open **Options →
+   Controls** to view or remap every digital action, assign up to two inputs
+   per action, clear individual bindings, or restore the defaults.
+
+**This is the 1.7.2 Vita release.** Restored remains the recommended preset.
+Remastered skips unsupported post-processing and per-pixel lighting on Vita;
+it does not provide the complete desktop Remastered look. Install over the
+existing `GBLN00001` application without deleting your
+`ux0:data/goldenballoon/` directory; keep a backup of your saves. If something
+breaks, check [PORTING_STATUS.md](PORTING_STATUS.md) first and consider
+opening an issue with what you were doing when it happened.
+
+## What Golden Balloon is (from the upstream project)
+
+- **Widescreen** with the original FOV and art direction preserved, plus
+  aspect, FOV, and supersampling controls.
+- **High framerates without touching the game.** The simulation, physics,
+  music, and lap times always run at their authored pace.
+- **Local multiplayer** for 2–4 players, per-controller binding, split-screen
+  (desktop only — see the Vita status table below).
+- **Three extra racers.** Taj, Wizpig, and Terry are playable with their own
+  identities and vehicles.
+- **Saves that behave**: EEPROM progress, ghosts, and settings persist.
+
+The full feature list — most of which the Vita port inherits unchanged from
+the shared game/engine code — is in the
+[upstream README](https://github.com/akratch/goldenballoon#features).
+
+## Platforms
+
+| Platform | Status |
+|---|---|
+| Windows (x64) | Upstream, stable — see [akratch/goldenballoon](https://github.com/akratch/goldenballoon) |
+| macOS (Apple silicon) | Upstream, stable |
+| Linux (x86-64) | Upstream, best effort |
+| Browser (WebGPU) | Upstream, stable |
+| **PS Vita** | **This fork, 1.7.2 — working audio and silver-coin jingles confirmed on hardware, native-resolution defaults, HD texture-pack support, persistent shader caching, non-blocking trophy unlocks, 98 homebrew trophies, control remapping, and a Save Editor. Restored is recommended; experimental preload is excluded. See [PORTING_STATUS.md](PORTING_STATUS.md).** |
+
+## PS Vita: known limitations
+
+This list is specific to the Vita target; upstream's own "Known limitations"
+apply too where they overlap. See [PORTING_STATUS.md](PORTING_STATUS.md) for
+the full, continuously-updated table (it also tracks every crash bug found
+and fixed so far, with root causes).
+
+- **Remastered preset runs, but is not the full Remastered look.** Its
+  screen-space post effects (tonemapping, bloom, FXAA, SSAO) and RL-5
+  per-pixel lighting are compiled out or disabled on Vita, because vitaGL and
+  the Vita's shader compiler cannot take the programs they need. Grading, SDF
+  text and the rest of the preset do apply. Restored stays the default.
+- **No ROM picker.** The ROM must sit at the fixed path
+  `ux0:data/goldenballoon/baserom.us.v80.z64`.
+- **HD texture pop-in remains possible.** Async loading temporarily displays the
+  original texture. The experimental per-scene preloader is not included.
+  Audio performance with heavy enabled packs has not been separately
+  qualified; disable packs when troubleshooting audio or frame-time issues.
+- **No WebGPU, no online play, no Phone Party, no sun-shadow mapping, no
+  MSAA.** vitaGL (the Vita's OpenGL-over-sceGxm layer) doesn't expose the GL
+  features these need; see the "What's disabled or stubbed on Vita" table in
+  [PORTING_STATUS.md](PORTING_STATUS.md) for the full list and the reason
+  for each.
+- **Item-fire (Z) defaults to Triangle**, since the Vita has no analog L2/R2
+  triggers for the upstream default binding to land on. The right stick
+  still covers all four C-button camera directions.
+- **Broader hardware coverage is still welcome.** The full Adventure has been
+  completed on real hardware, while unusual multiplayer combinations and
+  third-party controllers still benefit from additional reports.
+
+## PS Vita trophies
+
+The VPK includes 98 trophies. The main set includes a custom platinum, core
+Adventure goals, and five-balloon challenges for every racer, including Taj,
+Wizpig, and Terry. Adventure 2 and all T.T./developer time-trial challenges
+are separate optional groups, so they do not count toward the platinum.
+
+The five-balloon racer challenges count both free-roaming overworld balloons
+and balloons awarded for first race or silver-coin clears during the current
+Adventure session. This applies to all ten original racers and the three added
+racers.
+
+Each trophy now has its own unlocked artwork, with the Achievement artwork
+used by permission from [RetroAchievements](https://retroachievements.org/).
+The package also includes custom badges for the three Golden Balloon-exclusive
+racer trophies and a custom platinum icon.
+
+Trophies require [NoTrpDrm](https://github.com/Rinnegatamante/NoTrpDrm) to
+be installed and enabled beneath **`*main`** in taiHEN. The port registers the pack during
+startup; when the plugin is absent or the trophy service is unavailable, it
+keeps playing normally and skips trophy operations. See the reusable setup
+guide in [PORTING_STATUS.md](PORTING_STATUS.md#adding-trophies-to-a-ps-vita-project).
+
+Trophy unlock requests run on a dedicated Vita worker thread, so waiting for
+the system notification and trophy database no longer freezes gameplay.
+Trophies already present in the Vita database are not submitted again when a
+completed save is loaded.
+
+## PS Vita Save Editor
+
+Enter the Magic Codes screen and enter **`GOLDENEDIT`** once to unlock the
+Save Editor; the code remains unlocked between boots. The editor can create,
+rename, or erase a save slot, edit track and world progression, key arenas,
+Taj races, hub balloons, T.T. records, unlockable racers, and Adventure 2.
+It also presents all trophy conditions in separate Main, Adventure 2, Time
+Trial, Character, and Power-Up pages. Changes are normalized so dependent
+story and balloon progress stays consistent; use it thoughtfully, as it
+intentionally changes the selected save.
+
+## PS Vita Controls
+
+Open **Options → Controls** for a Vita-native mapping screen. It displays the
+current Gas/Accept, Brake/Back, Horn/Use Item, Pause/Start, drift, D-pad, and
+camera bindings with vector Vita button and stick-direction icons. Select an
+action and the editor waits five seconds for up to two distinct inputs, then
+saves the last two. Each binding can be cleared separately, and **Reset to
+Default Controls** atomically restores the shipped layout. The screen supports
+D-pad navigation and blocks its input from reaching the menu or game behind it.
+
+## PS Vita performance defaults
+
+Vita builds render at the handheld's native 960x544 with 2x anisotropic
+filtering in both the Restored and Remastered presets. The desktop presets ask
+for 2x supersampling (four times the pixels) and 8x/16x anisotropy, which the
+SGX543 cannot afford. The Vita backend enforces an effective 1x render scale;
+changing the scale setting does not enable supersampling on Vita. Anisotropic
+filtering remains configurable, and an existing `mdkr64.ini` retains its saved
+value; remove the `AnisotropicFiltering` line to pick up the preset default.
+
+## PS Vita shader cache and performance
+
+The Vita renderer stores validated compiled shader binaries in
+`ux0:data/goldenballoon/shader_cache`. The first run still has to compile each
+shader as it is encountered and creates the cache, so an occasional first-run
+hitch is possible. Later runs load those binaries directly and avoid the
+repeated runtime compilation that previously caused visible pauses, including
+at the opening animated scene. Cache filenames include a hash of the generated
+shader source; after a renderer update, incompatible entries are ignored and
+replaced automatically. The directory may be deleted safely if troubleshooting
+is needed—the game will rebuild it during subsequent play.
+
+## Custom content
+
+Golden Balloon supports replacing textures and music via `mods/` and a
+`pack.ini` — see the
+[upstream README](https://github.com/akratch/goldenballoon#custom-content)
+and [docs/MODDING.md](docs/MODDING.md).
+
+**High-resolution texture packs work on Vita.** Drop a Rice/GLideN64 pack —
+the `.zip` or the folder — into `ux0:data/goldenballoon/mods/` and start the
+game; a zipped pack is unpacked on the Vita with a progress screen the first
+time. `Content.PacksEnabled` in `ux0:data/goldenballoon/mdkr64.ini` turns all
+packs on and off, and `Content.PackDisabled` takes a comma-separated list of
+pack names to skip, so several packs can sit in `mods/` with only the ones you
+want active.
+
+A stock desktop pack is heavy for the handheld: its textures are decoded,
+mip-chained and uploaded on the Vita, and non-power-of-two images get no
+mipmaps there at all. `tools/ricepack/vita_optimize_pack.py` prepares one on a
+PC first:
+
+```sh
+# Smaller PNG pack: merged _rgb/_a halves, power-of-two, capped side length.
+python tools/ricepack/vita_optimize_pack.py "SR.GU pack" "SR.GU pack Vita" --max-size 512
+
+# Or the Vita-native container: raw pixels with the mip chain already built,
+# so the handheld neither inflates a PNG nor filters a chain at run time.
+python tools/ricepack/vita_optimize_pack.py "SR.GU pack" "SR.GU pack Vita" --max-size 256 --format vtex
+```
+
+Both outputs keep the pack's own file names and folders, so the game
+recognises them like any other Rice pack. `.vtex` files load fastest and are
+the recommended form on Vita; they are also considerably larger on the memory
+card.
+
+Pack textures are read, decoded and mip-chained on helper threads, so a
+texture that is not ready yet draws the original from the ROM and is replaced
+once it arrives, rather than decoding it on the render thread. If helper
+startup fails, the store falls back to synchronous loading.
+
+**Experimental per-scene preloading is not shipped in v1.7.2.** It remains
+development work pending HD-pack/audio testing. Ordinary on-demand asynchronous
+loading is retained, so **this release does not claim to eliminate texture
+pop-in**. Keep packs optional and prefer offline `.vtex` conversion for heavy
+packs. Older development `texcache` lists are not used by this release.
+
+## No game data is included
+
+No ROM, textures, audio, music, models, or level data are distributed here
+or in any release, on Vita or any other platform. Golden Balloon reads
+everything at runtime from your copy of the game. We do not condone piracy.
+See [DISCLAIMER.md](DISCLAIMER.md) and [NOTICE.md](NOTICE.md).
+
+## Building from source
+
+### Automated PS Vita builds
+
+The [PS Vita VPK workflow](https://github.com/zm2283145/goldenballoon-vita-port/actions/workflows/vita-build.yml)
+builds every push to `main`. To start one manually, open that Actions workflow
+and choose **Run workflow**; manual runs also build `main`.
+
+After a successful run, download its **GoldenBalloon-Vita** artifact. The ZIP
+contains a versioned VPK, `SHA256SUMS.txt`, `BUILD_INFO.txt` with the exact source
+and dependency revisions, and package-verification results. Artifacts are kept
+for 30 days and may require a GitHub login to download. These are CI builds, not
+automatically published or hardware-qualified releases; stable releases remain
+on the [Releases page](https://github.com/zm2283145/goldenballoon-vita-port/releases).
+
+For each **new, unpublished version** in `CMakeLists.txt` (`MDKR_VERSION`), a
+successful build also creates or refreshes one **draft GitHub release** with
+the VPK, checksums and build details. Its notes describe merged pull requests
+and direct commits since the previous published stable release, with a link
+to the full comparison. Further builds for that version refresh the draft;
+published releases are never overwritten. Increment the version before
+preparing the next release (for example, `1.7.2` to `1.7.3`).
+
+Open the draft on the Releases page, review/edit the notes, test the VPK, then
+click **Publish release** when ready. Nothing is automatically published.
+Notes added outside the marked generated section are preserved on refresh.
+The workflow uses GitHub's built-in Actions token; no personal access token
+is needed. Only the draft job has release-write permission.
+
+CI uses checksum-pinned VitaSDK packages and matching pinned vitaGL/vitaShaRK
+sources. It includes LiveArea artwork and trophies, but never downloads or
+bundles a ROM, texture pack, or `libshacccg.suprx`. Debugger/profiler integration
+is disabled. The same `tools/package_vita.ps1` packaging recipe runs on Windows
+locally and PowerShell on the Ubuntu runner.
+
+### Desktop / browser (unchanged from upstream)
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+./build/mdkr64 --rom /path/to/your.z64
+```
+
+See the [upstream README](https://github.com/akratch/goldenballoon#building-from-source)
+for prerequisites and the browser build.
+
+### PS Vita
+
+**Prerequisites:**
+
+- [VitaSDK](https://vitasdk.org/) installed and `$VITASDK`/`%VITASDK%`
+  pointing at it (e.g. `C:\vitasdk` on Windows).
+- `cmake` and `ninja` on your PATH.
+- These packages installed via VitaSDK's package manager, `vdpm`:
+
+  ```bash
+  vdpm SDL2
+  vdpm vitaGL
+  vdpm vitashark
+  vdpm libmathneon
+  vdpm taihen
+  ```
+
+  (`vitaGL` is the GL-over-sceGxm layer the renderer targets since the Vita
+  has no real OpenGL; `vitashark` is its runtime GLSL→GXP shader compiler
+  and provides `SceShaccCgExt`; `libmathneon` and `taihen` are linked in
+  directly. The full link line is in `CMakeLists.txt` under `if(VITA)` if
+  something is still missing.)
+
+**Configure and build:**
+
+```powershell
+$env:VITASDK = "C:\vitasdk"   # wherever VitaSDK lives
+
+cmake -S . -B build-vita -G Ninja `
+    -DCMAKE_TOOLCHAIN_FILE=$env:VITASDK/share/vita.toolchain.cmake `
+    -DCMAKE_BUILD_TYPE=Release
+cmake --build build-vita --target mdkr64
+```
+
+**Package into a VPK:**
+
+```powershell
+# Every time you rebuild (ninja/cmake --build only produces the raw ELF —
+# this step regenerates versioned metadata and produces build-vita/mdkr64.vpk):
+tools/package_vita.ps1 -BuildDir build-vita
+```
+
+**Get it running:**
+
+1. Follow the [Quick start](#quick-start-ps-vita) steps above: homebrew
+   firmware + VitaShell + `libshacccg.suprx`, and the ROM at
+   `ux0:data/goldenballoon/baserom.us.v80.z64`.
+2. Copy `build-vita/mdkr64.vpk` to the Vita (VitaShell's FTP server is the
+   easiest way — `curl -T mdkr64.vpk ftp://<vita-ip>:1337/ux0:/data/` from a
+   PC on the same network) and install it from VitaShell.
+3. If it doesn't start, VitaShell can't show a crash log — the engine writes
+   its own boot log to `ux0:data/goldenballoon/mdkr_boot.log` on Vita, which
+   is the first thing to pull off and read after a failed run.
+
+`CMakeLists.txt` detects the Vita toolchain and turns off desktop-only
+subsystems (WebGPU, the ImGui launcher, Phone Party) automatically — no
+extra flags needed. Full build/link details, the exact packaging recipe, and
+everything that had to change to make the engine build and run on Vita are
+in [PORTING_STATUS.md](PORTING_STATUS.md).
+
+## For developers
+
+The game logic is the vendored decompilation; everything that makes it run
+on a modern machine (renderer, audio engine, input, pacing, saves) is
+first-party code under [`platform/`](platform/). The Vita target's own
+platform code lives alongside the desktop code in the same files, gated by
+`#if defined(__vita__)`, so the two stay in sync rather than forking.
+
+- [PORTING_STATUS.md](PORTING_STATUS.md) — the Vita port's living status
+  document: what's disabled and why, what compiles-but-is-untested, every
+  hardware bug found so far with its root cause and fix, and what's next
+- [CONTRIBUTING.md](CONTRIBUTING.md) — build, rules, and what a fix ships with
+- [docs/DEVELOPER_HANDBOOK.md](docs/DEVELOPER_HANDBOOK.md) — architecture and
+  the 64-bit/endianness bug shapes behind most defects here
+- [docs/README.md](docs/README.md) — full documentation index
+- [ROADMAP.md](ROADMAP.md) — deferred work and what would close it
+
+Code changes to the shared engine belong upstream at
+[akratch/goldenballoon](https://github.com/akratch/goldenballoon) where
+possible; this fork exists specifically to carry the Vita-only platform code
+and the hardware bring-up work until it's stable enough to be worth
+upstreaming on its own.
+
+## Credits
+
+Everything from the [upstream credits](https://github.com/akratch/goldenballoon#credits)
+applies here. In addition, this port would not exist without:
+
+- [Rinnegatamante](https://github.com/Rinnegatamante) for **vitaGL**
+  (OpenGL-over-sceGxm) and **vitaShaRK**, the runtime GLSL→GXP shader
+  compiler this port relies on for all rendering
+- [Rinnegatamante/Lighthouse](https://github.com/Rinnegatamante/Lighthouse),
+  a Banjo-Kazooie Vita port used as the concrete reference for library
+  choices, link flags, and the VPK packaging recipe
+- The [VitaSDK](https://vitasdk.org/) project and community
+
+## Legal
+
+[LICENSE](LICENSE) (MIT, first-party code only) ·
+[NOTICE.md](NOTICE.md) (per-component provenance) ·
+[DISCLAIMER.md](DISCLAIMER.md) (full position)
+
+Unaffiliated with and unendorsed by any rights holder, including Sony
+Interactive Entertainment. All trademarks belong to their respective owners.
+If you are a rights holder with a concern, open an issue and it will be
+addressed promptly.

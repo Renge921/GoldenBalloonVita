@@ -1,0 +1,108 @@
+# Packages the Vita build into a VPK. This step is NOT part of the CMake/ninja
+# build (the "mdkr64" CMake target only produces the raw linked ELF) -- it has
+# to be run manually after every rebuild that should reach real hardware.
+#
+# Usage: pwsh -File tools/package_vita.ps1 [-BuildDir build-vita] [-NoIcons]
+#
+# Requires $env:VITASDK to be set and the VitaSDK toolchain available on PATH.
+
+param(
+    [string]$BuildDir = "build-vita",
+    # LiveArea assets (icon0/bg/startup/template.xml) are bundled by default.
+    # This used to be opt-in behind -IncludeIcons because bundling them broke
+    # VitaShell's fresh install on real hardware with a generic 0x80104004
+    # error every time -- root-caused (2026-09) to template.xml using the
+    # newer "frame-based" LiveArea schema (<frame>/<pos>/<bg><img>) with a
+    # content-id attribute. That schema parses fine on some VitaShell/firmware
+    # combos but silently fails LiveArea registration on others. Switched to
+    # the older, simpler schema (<livearea-background><image>...</image>,
+    # <gate><startup-image>...</startup-image>) -- confirmed on real hardware
+    # to install and display correctly. Pass -NoIcons to fall back to a bare
+    # eboot + param.sfo VPK (no LiveArea) if needed.
+    [switch]$NoIcons
+)
+
+$ErrorActionPreference = "Stop"
+if (-not $env:VITASDK) {
+    throw "VITASDK must point to an installed VitaSDK."
+}
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$build = if ([IO.Path]::IsPathRooted($BuildDir)) { $BuildDir } else { Join-Path $repoRoot $BuildDir }
+$livearea = Join-Path $repoRoot "vita\livearea"
+$trophyPack = Join-Path $build "TROPHY.TRP"
+$cmakeLists = Join-Path $repoRoot "CMakeLists.txt"
+
+# Keep Vita package metadata aligned with the semantic version compiled into
+# the port. APP_VER is XX.YZ, so semantic X.Y.Z becomes XX.YZ (1.6.1 -> 01.61).
+$versionMatch = Select-String -Path $cmakeLists -Pattern 'set\(MDKR_VERSION "([0-9]+)\.([0-9]+)\.([0-9]+)"' | Select-Object -First 1
+if ($null -eq $versionMatch) {
+    throw "Could not read MDKR_VERSION from $cmakeLists"
+}
+$major = [int]$versionMatch.Matches[0].Groups[1].Value
+$minor = [int]$versionMatch.Matches[0].Groups[2].Value
+$patch = [int]$versionMatch.Matches[0].Groups[3].Value
+if ($major -gt 99 -or $minor -gt 9 -or $patch -gt 9) {
+    throw "MDKR_VERSION cannot be represented by Vita APP_VER"
+}
+$vitaAppVersion = ('{0:D2}.{1}{2}' -f $major, $minor, $patch)
+$version = "$major.$minor.$patch"
+$cacheVersion = Select-String -Path (Join-Path $build "CMakeCache.txt") `
+    -Pattern '^MDKR_VERSION:STRING=(.+)$' | Select-Object -First 1
+if ($null -eq $cacheVersion -or $cacheVersion.Matches[0].Groups[1].Value -cne $version) {
+    throw "CMakeCache.txt version does not match $version -- reconfigure and rebuild before packaging."
+}
+
+$env:PATH = (Join-Path $env:VITASDK "bin") + [IO.Path]::PathSeparator + $env:PATH
+
+Push-Location $build
+try {
+    if (-not (Test-Path "mdkr64")) {
+        throw "mdkr64 (raw linked ELF) not found in $build -- run the CMake/ninja build first."
+    }
+
+    & vita-mksfoex -s TITLE_ID=GBLN00001 -s APP_VER=$vitaAppVersion -d ATTRIBUTE2=12 "GoldenBalloon DKR" param.sfo
+    if ($LASTEXITCODE -ne 0) { throw "vita-mksfoex failed" }
+
+    & python (Join-Path $repoRoot "tools\build_vita_trophy_pack.py") `
+        --out $trophyPack --livearea-icon (Join-Path $livearea "icon0.png")
+    if ($LASTEXITCODE -ne 0) { throw "Vita trophy-pack generation failed" }
+
+    Copy-Item mdkr64 mdkr64.elf.unstripped -Force
+    Copy-Item mdkr64 mdkr64.elf -Force
+    arm-vita-eabi-strip -g mdkr64.elf
+    if ($LASTEXITCODE -ne 0) { throw "arm-vita-eabi-strip failed" }
+
+    vita-elf-create mdkr64.elf mdkr64.velf
+    if ($LASTEXITCODE -ne 0) { throw "vita-elf-create failed" }
+
+    # -c: compress the eboot (matches the original working build's size profile).
+    # -pm 0x2000000 (32MB): physically-contiguous memory budget. Without this,
+    # vitaGL's vglInitExtended silently fails (returns GL_FALSE) despite
+    # reporting healthy free-memory-pool numbers afterward -- the game boots,
+    # audio/input/game logic all run fine, but nothing ever renders. This was
+    # diagnosed via mdkr_vita_boot_log instrumentation around vglInitExtended.
+    # No -s: default is full/"unsafe" permissions, needed for the 256MB
+    # newlib heap (_newlib_heap_size_user in main_pc.c).
+    Remove-Item eboot.bin -Force -ErrorAction SilentlyContinue
+    vita-make-fself -c -pm 0x2000000 mdkr64.velf eboot.bin
+    if ($LASTEXITCODE -ne 0) { throw "vita-make-fself failed" }
+
+    Remove-Item mdkr64.vpk -Force -ErrorAction SilentlyContinue
+    if ($NoIcons) {
+        vita-pack-vpk -s param.sfo -b eboot.bin mdkr64.vpk
+    } else {
+        vita-pack-vpk -s param.sfo -b eboot.bin `
+            -a "$(Join-Path $livearea 'icon0.png')=sce_sys/icon0.png" `
+            -a "$(Join-Path $livearea 'bg.png')=sce_sys/livearea/contents/bg.png" `
+            -a "$(Join-Path $livearea 'startup.png')=sce_sys/livearea/contents/startup.png" `
+            -a "$(Join-Path $livearea 'template.xml')=sce_sys/livearea/contents/template.xml" `
+            -a "$trophyPack=sce_sys/trophy/GBLN00001_00/TROPHY.TRP" `
+            mdkr64.vpk
+    }
+    if ($LASTEXITCODE -ne 0) { throw "vita-pack-vpk failed" }
+
+    Get-ChildItem mdkr64.elf, mdkr64.velf, eboot.bin, mdkr64.vpk | Select-Object Name, Length, LastWriteTime
+}
+finally {
+    Pop-Location
+}
