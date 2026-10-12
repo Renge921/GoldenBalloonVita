@@ -34,7 +34,6 @@
 - **[VitaShell](https://github.com/TheOfficialFloW/VitaShell)**
 - **`libshacccg.suprx`**（ランタイムシェーダーコンパイラ）:
   - `ur0:data/libshacccg.suprx` に配置されている必要があります。
-  - VitaShellのメニュー、または [shacccg.suprx-installer](https://github.com/Electry/shacccg.suprx-installer) から導入できます（※本ポートの起動に必須です）。
 - **（任意）トロフィー対応**:
   - トロフィー機能を使用する場合、[NoTrpDrm](https://github.com/Rinnegatamante/NoTrpDrm)（`NoTrpDrm.suprx`）をダウンロードし、`ur0:tai/` 等に配置した上で `config.txt` の `*main` セクションに追加して本体を再起動してください。
 
