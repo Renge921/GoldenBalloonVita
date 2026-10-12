@@ -1526,6 +1526,11 @@ void func_800C6464_C7064(void) {
     D_8012C2C4_EE604 = mempool_alloc_safe(0x6C00, COLOUR_TAG_RED);
     D_8012C2C8_EE608 = mempool_alloc_safe(0x400, COLOUR_TAG_RED);
     D_8012C2CC_EE60C = mempool_alloc_safe(0x9000, COLOUR_TAG_RED);
+#ifdef NATIVE_PORT
+    if (D_8012C2CC_EE60C != NULL) {
+        gfx_dkr_texcache_invalidate_range(D_8012C2CC_EE60C, 0x9000);
+    }
+#endif
     for (i = 0, charIndex = 0; i < 128; i++) {
         D_8012C2C8_EE608[i].unk0 = 0;
         D_8012C2C8_EE608[i].dList = &D_8012C2C4_EE604[charIndex];
@@ -1576,6 +1581,9 @@ void func_800C663C_C723C(void) {
         func_800C67F4_C73F4();
         return;
     }
+#ifdef NATIVE_PORT
+    gfx_dkr_texcache_invalidate_range(D_8012C2D8_EE618, 0x9000);
+#endif
     var_v0 = 0;
     for (i = 0; i < 0x80; i++) {
         D_8012C2D4_EE614[i].unk0 = 0;
@@ -1665,6 +1673,8 @@ s32 func_800C68CC_C74CC(u16 arg0) {
         } while ((D_8012C2C0_EE600 != D_8012C2CC_EE60C) && (curIndex < 0));
 
         if (curIndex >= 0) {
+            s32 oldSlots = (u8) (*D_8012C2BC_EE5FC)[curIndex].unk1;
+            s32 slotsToInvalidate = (oldSlots > var_a3) ? oldSlots : var_a3;
             for (var_v1 = 0; var_v1 < var_a3; var_v1++) {
                 (*D_8012C2BC_EE5FC)[curIndex + var_v1].unk1 = var_a3;
                 if (var_v1 == 0) {
@@ -1685,13 +1695,14 @@ s32 func_800C68CC_C74CC(u16 arg0) {
             }
 #ifdef NATIVE_PORT
             swap_japanese_font_char(asset);
+            gfx_dkr_texcache_invalidate_range(asset, slotsToInvalidate * 0x120);
 #if defined(__vita__)
             {
                 static int s_charLogCount = 0;
-                if (s_charLogCount < 30) {
+                if (s_charLogCount < 60) {
                     char lb[128];
-                    snprintf(lb, sizeof(lb), "font_jp: load_char glyph=%04x unk0=%d unk4=%d fmt=%d slot=%d",
-                             (unsigned)glyphIndex, asset->unk0, asset->unk4, (int)asset->unk8, curIndex);
+                    snprintf(lb, sizeof(lb), "font_jp: load_char glyph=%04x unk0=%d unk4=%d fmt=%d slot=%d inv=%d",
+                             (unsigned)glyphIndex, asset->unk0, asset->unk4, (int)asset->unk8, curIndex, (int)(slotsToInvalidate * 0x120));
                     mdkr_vita_boot_log(lb);
                     s_charLogCount++;
                 }
