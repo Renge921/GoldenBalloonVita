@@ -4,6 +4,9 @@
 
 <h1 align="center">Golden Balloon — PS Vita Port (日本語版ROM対応)</h1>
 
+![license](https://img.shields.io/badge/license-MIT-green)
+![platform](https://img.shields.io/badge/platform-PS%20Vita-blue)
+
 <p align="center">
   本リポジトリは、<a href="https://github.com/zm2283145/goldenballoon-vita-port">zm2283145/goldenballoon-vita-port</a> をベースに、<br>
   <b>Nintendo 64 日本語版ROM（Diddy Kong Racing (J) / v79）に対応させたフォーク</b>です。<br>
