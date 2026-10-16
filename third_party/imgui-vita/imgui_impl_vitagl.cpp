@@ -73,8 +73,11 @@ void ImGui_ImplVitaGL_RenderDrawData(ImDrawData* draw_data)
 
 	// We are using the OpenGL fixed pipeline to make the example code simpler to read!
 	// Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, vertex/texcoord/color pointers, polygon fill.
-	GLint last_texture; glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
-	GLint last_program; glGetIntegerv(GL_CURRENT_PROGRAM, &last_program);
+	GLint last_active_texture = GL_TEXTURE0;
+	glGetIntegerv(GL_ACTIVE_TEXTURE, &last_active_texture);
+	glActiveTexture(GL_TEXTURE0);
+	GLint last_texture = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
+	GLint last_program = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &last_program);
 	GLint last_array_buffer = 0;
 	if (shaders_usage) {
 		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &last_array_buffer);
@@ -152,11 +155,16 @@ void ImGui_ImplVitaGL_RenderDrawData(ImDrawData* draw_data)
 				if (pcmd->UserCallback) {
 					pcmd->UserCallback(cmd_list, pcmd);
 				} else {
+					int clip_x = (int)pcmd->ClipRect.x;
+					int clip_y = (int)(fb_height - pcmd->ClipRect.w);
+					int clip_w = (int)(pcmd->ClipRect.z - pcmd->ClipRect.x);
+					int clip_h = (int)(pcmd->ClipRect.w - pcmd->ClipRect.y);
+					if (clip_w <= 0 || clip_h <= 0) {
+						index_offset += pcmd->ElemCount;
+						continue;
+					}
 					glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)pcmd->TextureId);
-					glScissor((int)pcmd->ClipRect.x,
-						(int)(fb_height - pcmd->ClipRect.w),
-						(int)(pcmd->ClipRect.z - pcmd->ClipRect.x),
-						(int)(pcmd->ClipRect.w - pcmd->ClipRect.y));
+					glScissor(clip_x, clip_y, clip_w, clip_h);
 					glDrawElements(GL_TRIANGLES, pcmd->ElemCount,
 						sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
 						(const void *)(index_offset * sizeof(ImDrawIdx)));
@@ -243,6 +251,7 @@ void ImGui_ImplVitaGL_RenderDrawData(ImDrawData* draw_data)
 		glDisableVertexAttribArray(2);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ARRAY_BUFFER, (GLuint)last_array_buffer);
 	} else {
 		glDisableClientState(GL_COLOR_ARRAY);
@@ -250,6 +259,7 @@ void ImGui_ImplVitaGL_RenderDrawData(ImDrawData* draw_data)
 		glDisableClientState(GL_VERTEX_ARRAY);
 	}
 	glBindTexture(GL_TEXTURE_2D, (GLuint)last_texture);
+	glActiveTexture((GLenum)last_active_texture);
 	glUseProgram((GLuint)last_program);
 	if (!shaders_usage) {
 		glMatrixMode(GL_MODELVIEW);
@@ -324,7 +334,10 @@ bool ImGui_ImplVitaGL_CreateDeviceObjects()
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
 	// Upload texture to graphics system
-	GLint last_texture;
+	GLint last_active_texture = GL_TEXTURE0;
+	glGetIntegerv(GL_ACTIVE_TEXTURE, &last_active_texture);
+	glActiveTexture(GL_TEXTURE0);
+	GLint last_texture = 0;
 	glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
 	glGenTextures(1, &g_FontTexture);
 	glBindTexture(GL_TEXTURE_2D, g_FontTexture);
@@ -337,7 +350,8 @@ bool ImGui_ImplVitaGL_CreateDeviceObjects()
 	io.Fonts->TexID = (void *)(intptr_t)g_FontTexture;
 
 	// Restore state
-	glBindTexture(GL_TEXTURE_2D, last_texture);
+	glBindTexture(GL_TEXTURE_2D, (GLuint)last_texture);
+	glActiveTexture((GLenum)last_active_texture);
 
 	return true;
 }

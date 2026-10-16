@@ -317,6 +317,8 @@ static GLuint opengl_vao;
 #if defined(__vita__)
 void mdkr_vita_restore_primary_vao(void) {
     glBindVertexArray(opengl_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, opengl_vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 #endif
 static struct ShaderProgram *current_shader_program;

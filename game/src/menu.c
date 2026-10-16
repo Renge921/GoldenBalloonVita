@@ -6001,6 +6001,7 @@ static void save_editor_load_time_trials(void) {
     Settings *settings = get_settings();
     u8 *mainTrackIds = (u8 *)get_misc_asset(ASSET_MISC_MAIN_TRACKS_IDS);
 
+    if (mainTrackIds == NULL) return;
     for (track = 0; track < SAVE_EDITOR_TIME_TRIAL_COUNT; track++) {
         const s32 trackId = mainTrackIds[track];
         const Vehicle vehicle = leveltable_vehicle_default(trackId);
@@ -6009,6 +6010,7 @@ static void save_editor_load_time_trials(void) {
             (beatenFlags & ((u64)16 << track)) != 0;
         sSaveEditorDeveloperTimeBeaten[track] =
             trophyTrack >= 0 && settings != NULL &&
+            vehicle >= 0 && vehicle < 3 &&
             settings->courseTimesPtr[vehicle] != NULL &&
             mdkr_vita_trophy_developer_time_beaten(
                 (unsigned)trophyTrack, settings->courseTimesPtr[vehicle][trackId]);
@@ -6026,7 +6028,11 @@ static void save_editor_load_unlocks(void) {
 }
 
 static void save_editor_refresh_slot_cache(s32 slot) {
-    Settings *settings = gSavefileData[slot];
+    Settings *settings;
+
+    if (slot < 0 || slot >= NUMBER_OF_SAVE_FILES) return;
+    settings = gSavefileData[slot];
+    if (settings == NULL || settings->balloonsPtr == NULL) return;
 
     gSavefileInfo[slot].isStarted = !settings->newGame;
     gSavefileInfo[slot].isAdventure2 =
@@ -6120,6 +6126,7 @@ static void save_editor_load_slot(s32 slot) {
 
     if (slot < 0 || slot >= NUMBER_OF_SAVE_FILES) return;
     settings = gSavefileData[slot];
+    if (settings == NULL || settings->balloonsPtr == NULL || settings->courseFlagsPtr == NULL) return;
     (void)read_save_file(slot, settings);
     for (world = 0; world < SAVE_EDITOR_WORLD_COUNT; world++) {
         sSaveEditorBalloons[slot][world] = settings->balloonsPtr[world];
@@ -6200,14 +6207,14 @@ void mdkr_vita_save_editor_select_slot(int slot) {
 }
 
 const char *mdkr_vita_save_editor_slot_name(int slot) {
-    if (slot < 0 || slot >= NUMBER_OF_SAVE_FILES || gSavefileData[slot]->newGame) {
+    if (slot < 0 || slot >= NUMBER_OF_SAVE_FILES || gSavefileData[slot] == NULL || gSavefileData[slot]->newGame) {
         return "EMPTY";
     }
     return gSavefileInfo[slot].name;
 }
 
 int mdkr_vita_save_editor_slot_balloons(int slot) {
-    if (slot < 0 || slot >= NUMBER_OF_SAVE_FILES || gSavefileData[slot]->newGame) {
+    if (slot < 0 || slot >= NUMBER_OF_SAVE_FILES || gSavefileData[slot] == NULL || gSavefileData[slot]->newGame) {
         return 0;
     }
     return gSavefileInfo[slot].balloonCount;
@@ -6216,7 +6223,8 @@ int mdkr_vita_save_editor_slot_balloons(int slot) {
 void mdkr_vita_save_editor_rename_slot(const char *name) {
     size_t length;
 
-    if (name == NULL || gSavefileData[sSaveEditorSlot]->newGame) {
+    if (name == NULL || sSaveEditorSlot < 0 || sSaveEditorSlot >= NUMBER_OF_SAVE_FILES ||
+        gSavefileData[sSaveEditorSlot] == NULL || gSavefileData[sSaveEditorSlot]->newGame) {
         sSaveEditorStatus = "CREATE THE SAVE BEFORE RENAMING IT";
         return;
     }
@@ -6304,7 +6312,7 @@ void mdkr_vita_save_editor_set_developer_beaten(int track, int beaten) {
 }
 
 int mdkr_vita_save_editor_slot_is_empty(int slot) {
-    return slot < 0 || slot >= NUMBER_OF_SAVE_FILES || gSavefileData[slot]->newGame;
+    return slot < 0 || slot >= NUMBER_OF_SAVE_FILES || gSavefileData[slot] == NULL || gSavefileData[slot]->newGame;
 }
 
 void mdkr_vita_save_editor_create_slot(void) {
@@ -6312,7 +6320,8 @@ void mdkr_vita_save_editor_create_slot(void) {
 }
 
 void mdkr_vita_save_editor_create_slot_mode(int adventureTwo) {
-    if (!gSavefileData[sSaveEditorSlot]->newGame) {
+    if (sSaveEditorSlot < 0 || sSaveEditorSlot >= NUMBER_OF_SAVE_FILES ||
+        gSavefileData[sSaveEditorSlot] == NULL || !gSavefileData[sSaveEditorSlot]->newGame) {
         sSaveEditorStatus = "SLOT ALREADY CONTAINS A SAVE";
         return;
     }
