@@ -4,6 +4,9 @@
 
 <h1 align="center">Golden Balloon — PS Vita Port (日本語版ROM対応)</h1>
 
+![license](https://img.shields.io/badge/license-MIT-green)
+![platform](https://img.shields.io/badge/platform-PS%20Vita-blue)
+
 <p align="center">
   本リポジトリは、<a href="https://github.com/zm2283145/goldenballoon-vita-port">zm2283145/goldenballoon-vita-port</a> をベースに、<br>
   <b>Nintendo 64 日本語版ROM（Diddy Kong Racing (J) / v79）に対応させたフォーク</b>です。<br>
@@ -34,7 +37,6 @@
 - **[VitaShell](https://github.com/TheOfficialFloW/VitaShell)**
 - **`libshacccg.suprx`**（ランタイムシェーダーコンパイラ）:
   - `ur0:data/libshacccg.suprx` に配置されている必要があります。
-  - VitaShellのメニュー、または [shacccg.suprx-installer](https://github.com/Electry/shacccg.suprx-installer) から導入できます（※本ポートの起動に必須です）。
 - **（任意）トロフィー対応**:
   - トロフィー機能を使用する場合、[NoTrpDrm](https://github.com/Rinnegatamante/NoTrpDrm)（`NoTrpDrm.suprx`）をダウンロードし、`ur0:tai/` 等に配置した上で `config.txt` の `*main` セクションに追加して本体を再起動してください。
 
@@ -87,5 +89,5 @@ powershell tools/package_vita.ps1 -BuildDir build-vita
 ## 免責事項 (Legal & Disclaimer)
 
 - 本プロジェクトには、ゲームのROMデータ、テクスチャ、音声、BGM、3Dモデル等の著作権で保護されたアセットは一切含まれていません。
-- 本ソフトウェアは個人利用および研究目的の非公式ファンプロジェクトであり、任天堂、レア社、ソニーその他権利者とは一切関係ありません。
+- 本ソフトウェアは個人利用および研究目的の非公式ファンプロジェクトであり、任天堂、レア社、その他権利者とは一切関係ありません。
 - 詳細については [DISCLAIMER.md](DISCLAIMER.md) および [NOTICE.md](NOTICE.md) を参照してください。
